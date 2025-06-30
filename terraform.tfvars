@@ -1,0 +1,7 @@
+tenancy_ocid     = "ocid1.tenancy.oc1..aaaaaaaabinam5jqojx4dktxooix7lkb7fnn4hiewiafco4c7q726babqska"
+user_ocid        = "ocid1.user.oc1..aaaaaaaa6kzwdlsucqd6w2j25nllgwbjcltq7uspvltn63lfntvtnfxzwava"
+fingerprint      = "f9:09:fa:eb:dc:08:d0:23:56:b9:3e:72:ed:b1:a8:57"
+private_key_path = "../keys_oci/mcondor@univalle.edu-2025-06-30T14_56_29.313Z.pem"
+region           = "sa-saopaulo-1"
+compartment_ocid = "ocid1.tenancy.oc1..aaaaaaaabinam5jqojx4dktxooix7lkb7fnn4hiewiafco4c7q726babqska"
+ssh_public_key   = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC9SKXM+JoJpVtC81XnEdVZ66T9c9UkOX+cyicieRfiUYuA31n61RzE6ao9944TG7HEv7xzeXhrGUdf6kdTNqQpO61x+9nY/0gw17lenvvPtdKNxtlVbp+SOuyLRmI+yHhaf2pD06bUsOuWl4CdN7I2GUW0r3F+SiSIs3ooo1fOcvuihUla9qyOdIftTg5bbSpANGbt69ln6QGWY1z9tVwmY8l6vQ4y2Kk0dVt96WyqYqDeZuRBDkHdOSW8zodoXSFr+RdbwSCfYxImqqu+5QIARDyEe81ldfx3hkim+uGlkh6LEJdeB5om39/4eoFck/Y3ahwFzoJZltIfNnybkbLd"
