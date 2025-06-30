@@ -29,22 +29,31 @@ pipeline {
     }
     stage('Terraform Plan') {
       steps {
-        sh 'terraform plan -out=tfplan'
+        withCredentials([file(credentialsId: 'oci-private-key', variable: 'OCI_PRIVATE_KEY')]) {
+          sh '''
+            export TF_VAR_private_key_path=$OCI_PRIVATE_KEY
+            terraform plan -out=tfplan
+          '''
+        }
       }
     }
     stage('Terraform Apply or Destroy') {
       steps {
-        script {
-          if (params.ACTION == 'apply') {
-            sh 'terraform apply -auto-approve tfplan'
-          } else if (params.ACTION == 'destroy') {
-            sh 'terraform destroy -auto-approve'
-          } else {
-            error "Acción no soportada: ${params.ACTION}"
+        withCredentials([file(credentialsId: 'oci-private-key', variable: 'OCI_PRIVATE_KEY')]) {
+          script {
+            sh 'export TF_VAR_private_key_path=$OCI_PRIVATE_KEY'
+            if (params.ACTION == 'apply') {
+              sh 'terraform apply -auto-approve tfplan'
+            } else if (params.ACTION == 'destroy') {
+              sh 'terraform destroy -auto-approve'
+            } else {
+              error "Acción no soportada: ${params.ACTION}"
+            }
           }
         }
       }
     }
+
   }
   post {
     failure {
