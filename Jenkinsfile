@@ -40,7 +40,11 @@ pipeline {
         script {
           withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CRED_USER', passwordVariable: 'DOCKERHUB_CRED_PASS')]) {
             sh 'chmod +x scripts/create_dockerhub_repos.sh'
-            sh "./scripts/create_dockerhub_repos.sh ${DOCKERHUB_CRED_PASS} ${DOCKERHUB_CRED_USER}"
+            sh '''
+              export DOCKERHUB_CRED_PASS="${DOCKERHUB_CRED_PASS}"
+              export DOCKERHUB_CRED_USER="${DOCKERHUB_CRED_USER}"
+              ./scripts/create_dockerhub_repos.sh "$DOCKERHUB_CRED_PASS" "$DOCKERHUB_CRED_USER"
+            '''
           }
         }
       }
