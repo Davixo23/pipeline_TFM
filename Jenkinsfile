@@ -18,10 +18,16 @@ pipeline {
     stage('Terraform') {
       steps {
         withCredentials([file(credentialsId: 'oci-private-key', variable: 'OCI_PRIVATE_KEY')]) {
-          sh '''
-            chmod +x scripts/run_terraform.sh
-            ./scripts/run_terraform.sh "$OCI_PRIVATE_KEY" "${ACTION}"
-          '''
+          script {
+            sh 'chmod +x scripts/run_terraform.sh'
+            sh "./scripts/run_terraform.sh \"$OCI_PRIVATE_KEY\" \"${params.ACTION}\""
+
+            if (params.ACTION == 'apply') {
+              def publicIp = sh(script: 'terraform output -raw instance_public_ip', returnStdout: true).trim()
+              echo "La IP pública es: ${publicIp}"
+              // Aquí puedes agregar lógica para abrir URL, enviar notificaciones, etc.
+            }
+          }
         }
       }
     }
