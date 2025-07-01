@@ -18,23 +18,26 @@ pipeline {
     stage('Check Existing Infrastructure') {
       steps {
         script {
-          env.INSTANCE_PUBLIC_IP = '' // Resetear antes
+          env.INSTANCE_PUBLIC_IP = ''
           try {
+            sh 'terraform refresh' // sincroniza estado
             def existingIp = sh(script: 'terraform output -raw instance_public_ip', returnStdout: true).trim()
-            if (existingIp) {
+            if (existingIp && existingIp != '') {
               env.INSTANCE_PUBLIC_IP = existingIp
+            } else {
+              echo "Output instance_public_ip está vacío."
             }
           } catch (err) {
             echo "No se encontró IP pública existente."
           }
-          echo "IP pública detectada: ${env.INSTANCE_PUBLIC_IP}"
+          echo "IP pública detectada: '${env.INSTANCE_PUBLIC_IP}'"
         }
       }
     }
 
     stage('Terraform') {
       when {
-        expression { params.ACTION == 'destroy' || env.INSTANCE_PUBLIC_IP == '' }
+        params.ACTION == 'destroy' || !env.INSTANCE_PUBLIC_IP?.trim()
       }
       steps {
         withCredentials([file(credentialsId: 'oci-private-key', variable: 'OCI_PRIVATE_KEY')]) {
