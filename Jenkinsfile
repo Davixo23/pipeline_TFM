@@ -34,47 +34,43 @@ pipeline {
         }
       }
     }*/
-stage('Create Docker Hub Repositories') {
+    stage('Create Docker Hub Repositories') {
       when { expression { params.ACTION == 'apply' } }
       steps {
         script {
           withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CRED_USER', passwordVariable: 'DOCKERHUB_CRED_PASS')]) {
-            sh """
-              curl -s -o /dev/null -w "%{http_code}" -X POST \
-                -H "Content-Type: application/json" \
-                -H "Authorization: JWT ${DOCKERHUB_CRED_PASS}" \
-                -d '{"namespace": "${DOCKERHUB_CRED_USER}", "name": "backend-app", "is_private": false, "description": "Backend application image"}' \
-                https://hub.docker.com/v2/repositories/
-              # Verificación omitida para brevedad
-            """
-            sh """
-              curl -s -o /dev/null -w "%{http_code}" -X POST \
-                -H "Content-Type: application/json" \
-                -H "Authorization: JWT ${DOCKERHUB_CRED_PASS}" \
-                -d '{"namespace": "${DOCKERHUB_CRED_USER}", "name": "frontend-app", "is_private": false, "description": "Frontend application image"}' \
-                https://hub.docker.com/v2/repositories/
-              # Verificación omitida para brevedad
-            """
+            sh 'chmod +x scripts/create_dockerhub_repos.sh'
+            sh "./scripts/create_dockerhub_repos.sh ${DOCKERHUB_CRED_PASS} ${DOCKERHUB_CRED_USER}"
           }
         }
       }
     }
-    stage('Build and Push Docker Images') {
-      when {
-        expression { params.ACTION == 'apply' }
-      }
+    stage('Build Docker Images') {
+      when { expression { params.ACTION == 'apply' } }
       steps {
         script {
-          withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
-            docker.withRegistry('https://registry.hub.docker.com', 'dockerhub_credentials_id') {
-              def backendImage = docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend")
-              backendImage.push()
-              backendImage.push('latest')
-
-              def frontendImage = docker.build("${env.DOCKERHUB_USER}/frontend-app:${env.TAG}", "app/frontend")
-              frontendImage.push()
-              frontendImage.push('latest')
+          parallel(
+            backend: {
+              docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend")
+            },
+            frontend: {
+              docker.build("${env.DOCKERHUB_USER}/frontend-app:${env.TAG}", "app/frontend")
             }
+          )
+        }
+      }
+    }
+
+    stage('Push Docker Images') {
+      when { expression { params.ACTION == 'apply' } }
+      steps {
+        script {
+          withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CRED_USER', passwordVariable: 'DOCKERHUB_CRED_PASS')]) {
+            sh "echo ${DOCKERHUB_CRED_PASS} | docker login -u ${DOCKERHUB_CRED_USER} --password-stdin"
+            sh "docker push ${env.DOCKERHUB_USER}/backend-app:${env.TAG}"
+            sh "docker push ${env.DOCKERHUB_USER}/backend-app:latest"
+            sh "docker push ${env.DOCKERHUB_USER}/frontend-app:${env.TAG}"
+            sh "docker push ${env.DOCKERHUB_USER}/frontend-app:latest"
           }
         }
       }
