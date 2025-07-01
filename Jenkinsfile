@@ -34,7 +34,6 @@ pipeline {
         }
       }
     }*/
-stages {
     stage('Build and Push Docker Images') {
       when {
         expression { params.ACTION == 'apply' }
@@ -59,7 +58,6 @@ stages {
       }
     }
   }
-}
   post {
     failure {
       echo 'Pipeline falló. Revisa los logs.'
