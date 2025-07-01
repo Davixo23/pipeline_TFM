@@ -10,9 +10,8 @@ terraform plan -out=tfplan
 if [ "$ACTION" = "apply" ]; then
   terraform apply -auto-approve tfplan
 
-  # Obtener y mostrar la IP pública después de aplicar
-  echo "IP pública obtenida de Terraform:"
-  terraform output -raw instance_public_ip
+  # Guardar la IP pública en un archivo
+  terraform output -raw instance_public_ip > instance_public_ip.txt
 
 elif [ "$ACTION" = "destroy" ]; then
   terraform destroy -auto-approve

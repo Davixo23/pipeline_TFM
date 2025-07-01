@@ -23,9 +23,12 @@ pipeline {
             sh "./scripts/run_terraform.sh \"$OCI_PRIVATE_KEY\" \"${params.ACTION}\""
 
             if (params.ACTION == 'apply') {
-              def publicIp = sh(script: 'terraform output -raw instance_public_ip', returnStdout: true).trim()
+              // Leer el archivo con la IP pública
+              def publicIp = readFile('instance_public_ip.txt').trim()
               echo "La IP pública es: ${publicIp}"
-              // Aquí puedes agregar lógica para abrir URL, enviar notificaciones, etc.
+
+              // Opcional: archivar el archivo para que quede disponible en Jenkins
+              archiveArtifacts artifacts: 'instance_public_ip.txt', fingerprint: true
             }
           }
         }
