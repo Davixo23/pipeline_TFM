@@ -51,10 +51,10 @@ pipeline {
         script {
           parallel(
             backend: {
-              docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend")
+              env.BACKEND_IMAGE = docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend").imageName()
             },
             frontend: {
-              docker.build("${env.DOCKERHUB_USER}/frontend-app:${env.TAG}", "app/frontend")
+              env.FRONTEND_IMAGE = docker.build("${env.DOCKERHUB_USER}/frontend-app:${env.TAG}", "app/frontend").imageName()
             }
           )
         }
@@ -66,11 +66,17 @@ pipeline {
       steps {
         script {
           withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CRED_USER', passwordVariable: 'DOCKERHUB_CRED_PASS')]) {
-            sh "echo ${DOCKERHUB_CRED_PASS} | docker login -u ${DOCKERHUB_CRED_USER} --password-stdin"
-            sh "docker push ${env.DOCKERHUB_USER}/backend-app:${env.TAG}"
-            sh "docker push ${env.DOCKERHUB_USER}/backend-app:latest"
-            sh "docker push ${env.DOCKERHUB_USER}/frontend-app:${env.TAG}"
-            sh "docker push ${env.DOCKERHUB_USER}/frontend-app:latest"
+            docker.withRegistry('https://registry.hub.docker.com', 'dockerhub_credentials_id') {
+              def backendImage = docker.image(env.BACKEND_IMAGE)
+              backendImage.tag('latest')
+              backendImage.push()
+              backendImage.push('latest')
+
+              def frontendImage = docker.image(env.FRONTEND_IMAGE)
+              frontendImage.tag('latest')
+              frontendImage.push()
+              frontendImage.push('latest')
+            }
           }
         }
       }
