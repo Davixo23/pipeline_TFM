@@ -59,6 +59,7 @@ stages {
       }
     }
   }
+}
   post {
     failure {
       echo 'Pipeline falló. Revisa los logs.'
