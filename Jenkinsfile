@@ -34,6 +34,41 @@ pipeline {
         }
       }
     }*/
+stage('Create Docker Hub Repositories') {
+      when {
+        expression { params.ACTION == 'apply' }
+      }
+      steps {
+        script {
+          withCredentials([string(credentialsId: 'dockerhub_credentials_id', variable: 'DOCKERHUB_API_TOKEN')]) {
+            // Crear backend-app repo
+            sh """
+              curl -s -o /dev/null -w "%{http_code}" -X POST \
+                -H "Content-Type: application/json" \
+                -H "Authorization: JWT ${DOCKERHUB_API_TOKEN}" \
+                -d '{"namespace": "${env.DOCKERHUB_USER}", "name": "backend-app", "is_private": false, "description": "Backend application image"}' \
+                https://hub.docker.com/v2/repositories/
+              if [ "\$(curl -s -o /dev/null -w "%{http_code}" -X GET -H "Authorization: JWT ${DOCKERHUB_API_TOKEN}" https://hub.docker.com/v2/repositories/${env.DOCKERHUB_USER}/backend-app/)" != "200" ] && [ "\$(curl -s -o /dev/null -w "%{http_code}" -X GET -H "Authorization: JWT ${DOCKERHUB_API_TOKEN}" https://hub.docker.com/v2/repositories/${env.DOCKERHUB_USER}/backend-app/)" != "404" ]; then
+                echo "Failed to create or verify backend-app repository."
+                exit 1
+              fi
+            """
+            // Crear frontend-app repo
+            sh """
+              curl -s -o /dev/null -w "%{http_code}" -X POST \
+                -H "Content-Type: application/json" \
+                -H "Authorization: JWT ${DOCKERHUB_API_TOKEN}" \
+                -d '{"namespace": "${env.DOCKERHUB_USER}", "name": "frontend-app", "is_private": false, "description": "Frontend application image"}' \
+                https://hub.docker.com/v2/repositories/
+              if [ "\$(curl -s -o /dev/null -w "%{http_code}" -X GET -H "Authorization: JWT ${DOCKERHUB_API_TOKEN}" https://hub.docker.com/v2/repositories/${env.DOCKERHUB_USER}/frontend-app/)" != "200" ] && [ "\$(curl -s -o /dev/null -w "%{http_code}" -X GET -H "Authorization: JWT ${DOCKERHUB_API_TOKEN}" https://hub.docker.com/v2/repositories/${env.DOCKERHUB_USER}/frontend-app/)" != "404" ]; then
+                echo "Failed to create or verify frontend-app repository."
+                exit 1
+              fi
+            """
+          }
+        }
+      }
+    }
     stage('Build and Push Docker Images') {
       when {
         expression { params.ACTION == 'apply' }
@@ -41,9 +76,6 @@ pipeline {
       steps {
         script {
           withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
-            // Opcional: hacer login explícito con docker CLI
-            sh "docker login -u ${DOCKERHUB_CREDENTIALS_USR} -p ${DOCKERHUB_CREDENTIALS_PSW}"
-            
             docker.withRegistry('https://registry.hub.docker.com', '') {
               def backendImage = docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend")
               backendImage.push()
