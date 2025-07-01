@@ -66,7 +66,7 @@ stage('Create Docker Hub Repositories') {
       steps {
         script {
           withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
-            docker.withRegistry('https://registry.hub.docker.com', '') {
+            docker.withRegistry('https://registry.hub.docker.com', 'dockerhub_credentials_id') {
               def backendImage = docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend")
               backendImage.push()
               backendImage.push('latest')
