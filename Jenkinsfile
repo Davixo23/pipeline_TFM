@@ -18,19 +18,20 @@ pipeline {
     stage('Check Existing Infrastructure') {
       steps {
         script {
-          // Intentar obtener IP pública existente
-          def existingIp = ''
+          env.INSTANCE_PUBLIC_IP = '' // Resetear antes
           try {
-            existingIp = sh(script: 'terraform output -raw instance_public_ip', returnStdout: true).trim()
+            def existingIp = sh(script: 'terraform output -raw instance_public_ip', returnStdout: true).trim()
+            if (existingIp) {
+              env.INSTANCE_PUBLIC_IP = existingIp
+            }
           } catch (err) {
             echo "No se encontró IP pública existente."
           }
-          // Guardar en variable de entorno para usar en stages posteriores
-          env.INSTANCE_PUBLIC_IP = existingIp
           echo "IP pública detectada: ${env.INSTANCE_PUBLIC_IP}"
         }
       }
     }
+
     stage('Terraform') {
       when {
         expression { params.ACTION == 'destroy' || env.INSTANCE_PUBLIC_IP == '' }
@@ -62,6 +63,15 @@ pipeline {
               }
             } else if (params.ACTION == 'destroy') {
               env.INSTANCE_PUBLIC_IP = ''
+
+              // Eliminar archivo instance_public_ip.txt si existe
+              def ipFile = 'instance_public_ip.txt'
+              if (fileExists(ipFile)) {
+                sh "rm -f ${ipFile}"
+                echo "Archivo ${ipFile} eliminado tras destroy."
+              } else {
+                echo "Archivo ${ipFile} no encontrado para eliminar."
+              }
             }
           }
         }
@@ -126,7 +136,7 @@ pipeline {
         }
       }
     }
-    
+
     stage('Deploy to VM') {
       when {
         expression { params.ACTION == 'apply' && env.INSTANCE_PUBLIC_IP != '' }
