@@ -147,9 +147,7 @@ pipeline {
         expression { params.ACTION == 'apply' && env.INSTANCE_PUBLIC_IP != '' }
       }
       steps {
-        script {
-          // Aquí puedes agregar comandos SSH o scripts para desplegar las imágenes en la VM
-          // Por ejemplo:
+        sshagent(['oci-ssh-private-key']) { // Usa el ID de tu credencial SSH
           sh """
             ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'docker pull ${env.DOCKERHUB_USER}/backend-app:${env.TAG} && docker run -d --name backend ${env.DOCKERHUB_USER}/backend-app:${env.TAG}'
             ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'docker pull ${env.DOCKERHUB_USER}/frontend-app:${env.TAG} && docker run -d --name frontend -p 80:80 ${env.DOCKERHUB_USER}/frontend-app:${env.TAG}'
@@ -157,6 +155,7 @@ pipeline {
         }
       }
     }
+
 
     stage('Cleanup Docker Images') {
       steps {
