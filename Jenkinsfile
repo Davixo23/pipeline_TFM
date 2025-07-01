@@ -12,7 +12,6 @@ pipeline {
     TF_VAR_ssh_public_key = credentials('oci-ssh-public-key')
 
     DOCKERHUB_USER = 'davixo'
-    DOCKERHUB_CREDENTIALS = credentials('dockerhub_credentials_id') // credenciales Docker Hub en Jenkins
     TAG = "${env.BUILD_ID}"
   }
   stages {
@@ -35,23 +34,26 @@ pipeline {
         }
       }
     }*/
+stages {
     stage('Build and Push Docker Images') {
       when {
         expression { params.ACTION == 'apply' }
       }
       steps {
         script {
-          // Primero verificamos que las credenciales se cargaron correctamente
-          echo "Usuario de Docker Hub: ${DOCKERHUB_USER}"
-          echo "ID de credencial: ${DOCKERHUB_CREDENTIALS.id}"
-          docker.withRegistry('https://registry.hub.docker.com', env.DOCKERHUB_CREDENTIALS) {
-            def backendImage = docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend")
-            backendImage.push()
-            backendImage.push('latest')
+          withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
+            // Opcional: hacer login explícito con docker CLI
+            sh "docker login -u ${DOCKERHUB_CREDENTIALS_USR} -p ${DOCKERHUB_CREDENTIALS_PSW}"
+            
+            docker.withRegistry('https://registry.hub.docker.com', '') {
+              def backendImage = docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend")
+              backendImage.push()
+              backendImage.push('latest')
 
-            def frontendImage = docker.build("${env.DOCKERHUB_USER}/frontend-app:${env.TAG}", "app/frontend")
-            frontendImage.push()
-            frontendImage.push('latest')
+              def frontendImage = docker.build("${env.DOCKERHUB_USER}/frontend-app:${env.TAG}", "app/frontend")
+              frontendImage.push()
+              frontendImage.push('latest')
+            }
           }
         }
       }
