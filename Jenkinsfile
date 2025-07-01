@@ -43,12 +43,13 @@ pipeline {
             sh '''
               export DOCKERHUB_CRED_PASS="${DOCKERHUB_CRED_PASS}"
               export DOCKERHUB_CRED_USER="${DOCKERHUB_CRED_USER}"
-              ./scripts/create_dockerhub_repos.sh "$DOCKERHUB_CRED_PASS" "$DOCKERHUB_CRED_USER"
+              ./scripts/create_dockerhub_repos.sh
             '''
           }
         }
       }
     }
+
     stage('Build Docker Images') {
       when { expression { params.ACTION == 'apply' } }
       steps {
@@ -71,18 +72,29 @@ pipeline {
         script {
           withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CRED_USER', passwordVariable: 'DOCKERHUB_CRED_PASS')]) {
             docker.withRegistry('https://registry.hub.docker.com', 'dockerhub_credentials_id') {
-              def backendImage = docker.image(env.BACKEND_IMAGE)
-              backendImage.tag('latest')
-              backendImage.push()
-              backendImage.push('latest')
-
-              def frontendImage = docker.image(env.FRONTEND_IMAGE)
-              frontendImage.tag('latest')
-              frontendImage.push()
-              frontendImage.push('latest')
+              parallel(
+                backend: {
+                  def backendImage = docker.image(env.BACKEND_IMAGE)
+                  backendImage.tag('latest')
+                  backendImage.push()
+                  backendImage.push('latest')
+                },
+                frontend: {
+                  def frontendImage = docker.image(env.FRONTEND_IMAGE)
+                  frontendImage.tag('latest')
+                  frontendImage.push()
+                  frontendImage.push('latest')
+                }
+              )
             }
           }
         }
+      }
+    }
+    stage('Cleanup Docker Images') {
+      steps {
+        sh 'chmod +x scripts/cleanup_docker_images.sh'
+        sh './scripts/cleanup_docker_images.sh'
       }
     }
   }

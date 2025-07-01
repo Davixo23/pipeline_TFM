@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-TOKEN=$1
-NAMESPACE=$2
+TOKEN="${DOCKERHUB_CRED_PASS}"
+NAMESPACE="${DOCKERHUB_CRED_USER}"
 
 check_repo() {
   local repo_name=$1
