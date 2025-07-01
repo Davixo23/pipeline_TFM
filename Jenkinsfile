@@ -37,7 +37,9 @@ pipeline {
 
     stage('Terraform') {
       when {
-        params.ACTION == 'destroy' || !env.INSTANCE_PUBLIC_IP?.trim()
+        expression {
+          params.ACTION == 'destroy' || !env.INSTANCE_PUBLIC_IP?.trim()
+        }
       }
       steps {
         withCredentials([file(credentialsId: 'oci-private-key', variable: 'OCI_PRIVATE_KEY')]) {
