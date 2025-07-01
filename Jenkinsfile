@@ -15,25 +15,17 @@ pipeline {
     TAG = "${env.BUILD_ID}"
   }
   stages {
-    /*stage('Terraform') {
+    stage('Terraform') {
       steps {
         withCredentials([file(credentialsId: 'oci-private-key', variable: 'OCI_PRIVATE_KEY')]) {
           sh '''
-            export TF_VAR_private_key_path=$OCI_PRIVATE_KEY
-            terraform init
-            terraform plan -out=tfplan
-            if [ "${ACTION}" = "apply" ]; then
-              terraform apply -auto-approve tfplan
-            elif [ "${ACTION}" = "destroy" ]; then
-              terraform destroy -auto-approve
-            else
-              echo "Acción no soportada: ${ACTION}"
-              exit 1
-            fi
+            chmod +x scripts/run_terraform.sh
+            ./scripts/run_terraform.sh "$OCI_PRIVATE_KEY" "${ACTION}"
           '''
         }
       }
-    }*/
+    }
+
     stage('Create Docker Hub Repositories') {
       when { expression { params.ACTION == 'apply' } }
       steps {

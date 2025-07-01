@@ -34,49 +34,67 @@ pipeline {
         }
       }
     }*/
-stage('Create Docker Hub Repositories') {
+    stage('Create Docker Hub Repositories') {
       when { expression { params.ACTION == 'apply' } }
       steps {
         script {
           withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CRED_USER', passwordVariable: 'DOCKERHUB_CRED_PASS')]) {
-            sh """
-              curl -s -o /dev/null -w "%{http_code}" -X POST \
-                -H "Content-Type: application/json" \
-                -H "Authorization: JWT ${DOCKERHUB_CRED_PASS}" \
-                -d '{"namespace": "${DOCKERHUB_CRED_USER}", "name": "backend-app", "is_private": false, "description": "Backend application image"}' \
-                https://hub.docker.com/v2/repositories/
-              # Verificación omitida para brevedad
-            """
-            sh """
-              curl -s -o /dev/null -w "%{http_code}" -X POST \
-                -H "Content-Type: application/json" \
-                -H "Authorization: JWT ${DOCKERHUB_CRED_PASS}" \
-                -d '{"namespace": "${DOCKERHUB_CRED_USER}", "name": "frontend-app", "is_private": false, "description": "Frontend application image"}' \
-                https://hub.docker.com/v2/repositories/
-              # Verificación omitida para brevedad
-            """
+            sh 'chmod +x scripts/create_dockerhub_repos.sh'
+            sh '''
+              export DOCKERHUB_CRED_PASS="${DOCKERHUB_CRED_PASS}"
+              export DOCKERHUB_CRED_USER="${DOCKERHUB_CRED_USER}"
+              ./scripts/create_dockerhub_repos.sh
+            '''
           }
         }
       }
     }
-    stage('Build and Push Docker Images') {
-      when {
-        expression { params.ACTION == 'apply' }
-      }
+
+    stage('Build Docker Images') {
+      when { expression { params.ACTION == 'apply' } }
       steps {
         script {
-          withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CREDENTIALS_USR', passwordVariable: 'DOCKERHUB_CREDENTIALS_PSW')]) {
-            docker.withRegistry('https://registry.hub.docker.com', 'dockerhub_credentials_id') {
-              def backendImage = docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend")
-              backendImage.push()
-              backendImage.push('latest')
+          parallel(
+            backend: {
+              env.BACKEND_IMAGE = docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend").imageName()
+            },
+            frontend: {
+              env.FRONTEND_IMAGE = docker.build("${env.DOCKERHUB_USER}/frontend-app:${env.TAG}", "app/frontend").imageName()
+            }
+          )
+        }
+      }
+    }
 
-              def frontendImage = docker.build("${env.DOCKERHUB_USER}/frontend-app:${env.TAG}", "app/frontend")
-              frontendImage.push()
-              frontendImage.push('latest')
+    stage('Push Docker Images') {
+      when { expression { params.ACTION == 'apply' } }
+      steps {
+        script {
+          withCredentials([usernamePassword(credentialsId: 'dockerhub_credentials_id', usernameVariable: 'DOCKERHUB_CRED_USER', passwordVariable: 'DOCKERHUB_CRED_PASS')]) {
+            docker.withRegistry('https://registry.hub.docker.com', 'dockerhub_credentials_id') {
+              parallel(
+                backend: {
+                  def backendImage = docker.image(env.BACKEND_IMAGE)
+                  backendImage.tag('latest')
+                  backendImage.push()
+                  backendImage.push('latest')
+                },
+                frontend: {
+                  def frontendImage = docker.image(env.FRONTEND_IMAGE)
+                  frontendImage.tag('latest')
+                  frontendImage.push()
+                  frontendImage.push('latest')
+                }
+              )
             }
           }
         }
+      }
+    }
+    stage('Cleanup Docker Images') {
+      steps {
+        sh 'chmod +x scripts/cleanup_docker_images.sh'
+        sh './scripts/cleanup_docker_images.sh'
       }
     }
   }
