@@ -10,13 +10,9 @@ pipeline {
     TF_VAR_region = 'us-ashburn-1'
     TF_VAR_compartment_ocid = credentials('oci-compartment-ocid')
     TF_VAR_ssh_public_key = credentials('oci-ssh-public-key')
-
-    DOCKERHUB_USER = 'davixo'
-    DOCKERHUB_CREDENTIALS = credentials('dockerhub_credentials_id') // credenciales Docker Hub en Jenkins
-    TAG = "${env.BUILD_ID}"
   }
   stages {
-    /*stage('Terraform') {
+    stage('Terraform') {
       steps {
         withCredentials([file(credentialsId: 'oci-private-key', variable: 'OCI_PRIVATE_KEY')]) {
           sh '''
@@ -32,24 +28,6 @@ pipeline {
               exit 1
             fi
           '''
-        }
-      }
-    }*/
-    stage('Build and Push Docker Images') {
-      when {
-        expression { params.ACTION == 'apply' }
-      }
-      steps {
-        script {
-          docker.withRegistry('https://registry.hub.docker.com', env.DOCKERHUB_CREDENTIALS) {
-            def backendImage = docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend")
-            backendImage.push()
-            backendImage.push('latest')
-
-            def frontendImage = docker.build("${env.DOCKERHUB_USER}/frontend-app:${env.TAG}", "app/frontend")
-            frontendImage.push()
-            frontendImage.push('latest')
-          }
         }
       }
     }
