@@ -41,6 +41,9 @@ pipeline {
       }
       steps {
         script {
+          // Primero verificamos que las credenciales se cargaron correctamente
+          echo "Usuario de Docker Hub: ${DOCKERHUB_USER}"
+          echo "ID de credencial: ${DOCKERHUB_CREDENTIALS.id}"
           docker.withRegistry('https://registry.hub.docker.com', env.DOCKERHUB_CREDENTIALS) {
             def backendImage = docker.build("${env.DOCKERHUB_USER}/backend-app:${env.TAG}", "app/backend")
             backendImage.push()
