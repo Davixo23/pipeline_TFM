@@ -147,15 +147,15 @@ pipeline {
         expression { params.ACTION == 'apply' && env.INSTANCE_PUBLIC_IP != '' }
       }
       steps {
-        sshagent(['oci-ssh-private-key']) { // Usa el ID de tu credencial SSH
+        sshagent(['oci-ssh-private-key']) {
           sh """
-            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'docker pull ${env.DOCKERHUB_USER}/backend-app:${env.TAG} && docker run -d --name backend ${env.DOCKERHUB_USER}/backend-app:${env.TAG}'
-            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'docker pull ${env.DOCKERHUB_USER}/frontend-app:${env.TAG} && docker run -d --name frontend -p 80:80 ${env.DOCKERHUB_USER}/frontend-app:${env.TAG}'
+            scp -o StrictHostKeyChecking=no scripts/deploy_docker.sh ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/
+            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'chmod +x /home/ubuntu/deploy_docker.sh'
+            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} /home/ubuntu/deploy_docker.sh ${env.DOCKERHUB_USER}/backend-app:${env.TAG} ${env.DOCKERHUB_USER}/frontend-app:${env.TAG}
           """
         }
       }
     }
-
 
     stage('Cleanup Docker Images') {
       steps {
