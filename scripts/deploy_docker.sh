@@ -1,23 +1,18 @@
 #!/bin/bash
 set -e
 
-# Función para instalar docker-compose si no está presente
-install_docker_compose() {
-  echo "Docker Compose no encontrado. Instalando..."
+# Directorio donde están los archivos docker-compose.yml y demás
+DEPLOY_DIR="/home/ubuntu"
 
-  # Descargar la última versión de docker-compose
-  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+cd "$DEPLOY_DIR"
 
-  # Dar permisos de ejecución
-  sudo chmod +x /usr/local/bin/docker-compose
-
-  echo "Docker Compose instalado correctamente."
-}
-
-# Verificar si docker-compose está instalado
+# Verificar si docker-compose está instalado, si no, instalar (como antes)
 if ! command -v docker-compose &> /dev/null
 then
-  install_docker_compose
+  echo "Docker Compose no encontrado. Instalando..."
+  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+  sudo chmod +x /usr/local/bin/docker-compose
+  echo "Docker Compose instalado correctamente."
 else
   echo "Docker Compose ya está instalado."
 fi
@@ -34,11 +29,7 @@ if [ -f docker-compose.temp.yml ]; then
   mv docker-compose.temp.yml docker-compose.yml
 fi
 
-# Detener y eliminar contenedores anteriores
+# Ejecutar docker-compose en el directorio correcto
 docker-compose down || true
-
-# Descargar imágenes actualizadas
 docker-compose pull
-
-# Levantar servicios
 docker-compose up -d --build
