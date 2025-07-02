@@ -164,6 +164,7 @@ pipeline {
         }
       }
     }
+    
     stage('Deploy to VM') {
       when {
         expression { params.ACTION == 'apply' && env.INSTANCE_PUBLIC_IP != '' }
