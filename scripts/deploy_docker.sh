@@ -9,9 +9,22 @@ echo "Actualizando sistema e instalando Nginx si no está instalado..."
 if ! command -v nginx &> /dev/null; then
   sudo apt update
   sudo apt install -y nginx
-  sudo systemctl enable --now nginx
+  sudo systemctl enable nginx
+  sudo systemctl start nginx
 else
   echo "Nginx ya está instalado."
+
+  # Verificar si Nginx está habilitado para iniciar en boot
+  if ! sudo systemctl is-enabled nginx &> /dev/null; then
+    echo "Habilitando Nginx para iniciar en boot..."
+    sudo systemctl enable nginx
+  fi
+
+  # Verificar si Nginx está activo
+  if ! sudo systemctl is-active nginx &> /dev/null; then
+    echo "Iniciando servicio Nginx..."
+    sudo systemctl start nginx
+  fi
 fi
 
 echo "Descargando imágenes Docker desde Docker Hub..."
@@ -63,8 +76,12 @@ echo "Probando configuración de Nginx..."
 
 sudo nginx -t
 
-echo "Recargando Nginx para aplicar cambios..."
-
-sudo systemctl reload nginx
+# Recargar Nginx solo si está activo
+if sudo systemctl is-active nginx &> /dev/null; then
+  echo "Recargando Nginx para aplicar cambios..."
+  sudo systemctl reload nginx
+else
+  echo "Nginx no está activo, no se puede recargar."
+fi
 
 echo "Despliegue completado con éxito."
