@@ -142,6 +142,28 @@ pipeline {
       }
     }
 
+    stage('Prepare docker-compose') {
+      when { expression { params.ACTION == 'apply' } }
+      steps {
+        script {
+          // Rutas
+          def composeFile = 'app/docker-compose.yml'
+          def tempComposeFile = 'app/docker-compose.temp.yml'
+
+          // Leer archivo original
+          def composeContent = readFile(composeFile)
+
+          // Reemplazar imágenes con tag dinámico
+          composeContent = composeContent.replaceAll(/davixo\\/backend-app:.*$/, "davixo/backend-app:${env.TAG}")
+          composeContent = composeContent.replaceAll(/davixo\\/frontend-app:.*$/, "davixo/frontend-app:${env.TAG}")
+
+          // Guardar archivo temporal modificado
+          writeFile file: tempComposeFile, text: composeContent
+
+          echo "Archivo docker-compose modificado con imágenes tag ${env.TAG}"
+        }
+      }
+    }
     stage('Deploy to VM') {
       when {
         expression { params.ACTION == 'apply' && env.INSTANCE_PUBLIC_IP != '' }
@@ -149,9 +171,9 @@ pipeline {
       steps {
         sshagent(['oci-ssh-private-key']) {
           sh """
-            scp -o StrictHostKeyChecking=no scripts/deploy_docker.sh app/docker-compose.yml ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/
+            scp -o StrictHostKeyChecking=no scripts/deploy_docker.sh app/docker-compose.temp.yml ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/docker-compose.yml
             ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'chmod +x /home/ubuntu/deploy_docker.sh'
-            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} /home/ubuntu/deploy_docker.sh ${env.DOCKERHUB_USER}/backend-app:${env.TAG} ${env.DOCKERHUB_USER}/frontend-app:${env.TAG}
+            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} /home/ubuntu/deploy_docker.sh
           """
         }
       }
