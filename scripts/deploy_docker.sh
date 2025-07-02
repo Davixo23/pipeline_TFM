@@ -14,18 +14,21 @@ if ! command -v nginx &> /dev/null; then
 else
   echo "Nginx ya está instalado."
 
-  # Verificar si Nginx está habilitado para iniciar en boot
   if ! sudo systemctl is-enabled nginx &> /dev/null; then
     echo "Habilitando Nginx para iniciar en boot..."
     sudo systemctl enable nginx
   fi
 
-  # Verificar si Nginx está activo
   if ! sudo systemctl is-active nginx &> /dev/null; then
     echo "Iniciando servicio Nginx..."
     sudo systemctl start nginx
   fi
 fi
+
+echo "Eliminando configuraciones por defecto de Nginx para evitar conflictos..."
+
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo rm -f /etc/nginx/sites-enabled/000-default || true
 
 echo "Descargando imágenes Docker desde Docker Hub..."
 
@@ -44,7 +47,7 @@ echo "Ejecutando contenedor frontend en puerto 3000..."
 
 docker run -d --name frontend -p 3000:3000 davixo/frontend-app:latest
 
-echo "Creando configuración de Nginx para proxy inverso..."
+echo "Creando configuración personalizada de Nginx para proxy inverso..."
 
 NGINX_CONF_PATH="/etc/nginx/sites-available/my_app.conf"
 
@@ -68,7 +71,7 @@ server {
 }
 EOF
 
-echo "Habilitando configuración de Nginx..."
+echo "Habilitando configuración personalizada de Nginx..."
 
 sudo ln -sf "$NGINX_CONF_PATH" /etc/nginx/sites-enabled/my_app.conf
 
@@ -76,12 +79,8 @@ echo "Probando configuración de Nginx..."
 
 sudo nginx -t
 
-# Recargar Nginx solo si está activo
-if sudo systemctl is-active nginx &> /dev/null; then
-  echo "Recargando Nginx para aplicar cambios..."
-  sudo systemctl reload nginx
-else
-  echo "Nginx no está activo, no se puede recargar."
-fi
+echo "Recargando Nginx para aplicar cambios..."
+
+sudo systemctl reload nginx
 
 echo "Despliegue completado con éxito."
