@@ -1,7 +1,26 @@
 #!/bin/bash
 set -e
 
-# Variables opcionales si las usas, o solo asume que docker-compose.yml ya está en la VM
+# Función para instalar docker-compose si no está presente
+install_docker_compose() {
+  echo "Docker Compose no encontrado. Instalando..."
+
+  # Descargar la última versión de docker-compose
+  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+
+  # Dar permisos de ejecución
+  sudo chmod +x /usr/local/bin/docker-compose
+
+  echo "Docker Compose instalado correctamente."
+}
+
+# Verificar si docker-compose está instalado
+if ! command -v docker-compose &> /dev/null
+then
+  install_docker_compose
+else
+  echo "Docker Compose ya está instalado."
+fi
 
 # Eliminar docker-compose.yml viejo si existe
 if [ -f docker-compose.yml ]; then
