@@ -1,16 +1,18 @@
 #!/bin/bash
 set -e
 
-# Variables recibidas
 BACKEND_IMAGE=$1
 FRONTEND_IMAGE=$2
 
-# Elimina contenedores anteriores si existen
-docker rm -f backend || true
-docker rm -f frontend || true
+# Actualizar imágenes en docker-compose.yml usando yq (asegúrate que yq esté instalado)
+yq e -i ".services.backend.image = \"$BACKEND_IMAGE\"" docker-compose.yml
+yq e -i ".services.frontend.image = \"$FRONTEND_IMAGE\"" docker-compose.yml
 
-# Ejecuta backend con puerto 4000 mapeado
-docker run -d --name backend -p 4000:4000 "$BACKEND_IMAGE"
+# Detener y eliminar contenedores anteriores (si existen)
+docker-compose down || true
 
-# Ejecuta frontend con puerto 80 mapeado al 3000 interno
-docker run -d --name frontend -p 80:3000 "$FRONTEND_IMAGE"
+# Descargar las imágenes actualizadas
+docker-compose pull
+
+# Levantar los servicios
+docker-compose up -d --build

@@ -149,7 +149,7 @@ pipeline {
       steps {
         sshagent(['oci-ssh-private-key']) {
           sh """
-            scp -o StrictHostKeyChecking=no scripts/deploy_docker.sh ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/
+            scp -o StrictHostKeyChecking=no scripts/deploy_docker.sh app/docker-compose.yml ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/
             ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'chmod +x /home/ubuntu/deploy_docker.sh'
             ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} /home/ubuntu/deploy_docker.sh ${env.DOCKERHUB_USER}/backend-app:${env.TAG} ${env.DOCKERHUB_USER}/frontend-app:${env.TAG}
           """
