@@ -142,29 +142,6 @@ pipeline {
       }
     }
 
-    stage('Prepare docker-compose') {
-      when { expression { params.ACTION == 'apply' } }
-      steps {
-        script {
-          // Rutas
-          def composeFile = 'app/docker-compose.yml'
-          def tempComposeFile = 'app/docker-compose.temp.yml'
-
-          // Leer archivo original
-          def composeContent = readFile(composeFile)
-
-          // Reemplazar imágenes con tag dinámico usando regex para cualquier tag existente
-          composeContent = composeContent.replaceAll(/davixo\/backend-app:[^\s"]+/, "davixo/backend-app:${env.TAG}")
-          composeContent = composeContent.replaceAll(/davixo\/frontend-app:[^\s"]+/, "davixo/frontend-app:${env.TAG}")
-
-          // Guardar archivo temporal modificado
-          writeFile file: tempComposeFile, text: composeContent
-
-          echo "Archivo docker-compose modificado con imágenes tag ${env.TAG}"
-        }
-      }
-    }
-
     stage('Deploy to VM') {
       when {
         expression { params.ACTION == 'apply' && env.INSTANCE_PUBLIC_IP != '' }
@@ -172,9 +149,8 @@ pipeline {
       steps {
         sshagent(['oci-ssh-private-key']) {
           sh """
-            echo "Copiando archivos a la VM..."
+            echo "Copiando script de despliegue a la VM..."
             scp -o StrictHostKeyChecking=no scripts/deploy_docker.sh ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/
-            scp -o StrictHostKeyChecking=no app/docker-compose.temp.yml ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/
 
             echo "Dando permisos y ejecutando script de despliegue..."
             ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'chmod +x /home/ubuntu/deploy_docker.sh && /home/ubuntu/deploy_docker.sh'
@@ -182,8 +158,6 @@ pipeline {
         }
       }
     }
-
-
 
     stage('Cleanup Docker Images') {
       steps {

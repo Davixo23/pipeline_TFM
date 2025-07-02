@@ -2,36 +2,69 @@
 set -e
 
 DEPLOY_DIR="/home/ubuntu"
-
-echo "Cambiando al directorio de despliegue: $DEPLOY_DIR"
 cd "$DEPLOY_DIR"
 
-# Verificar si docker-compose está instalado, si no, instalarlo
-if ! command -v docker-compose &> /dev/null; then
-  echo "Docker Compose no encontrado. Instalando..."
-  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
-  sudo chmod +x /usr/local/bin/docker-compose
-  echo "Docker Compose instalado correctamente."
+echo "Actualizando sistema e instalando Nginx si no está instalado..."
+
+if ! command -v nginx &> /dev/null; then
+  sudo apt update
+  sudo apt install -y nginx
+  sudo systemctl enable --now nginx
 else
-  echo "Docker Compose ya está instalado."
+  echo "Nginx ya está instalado."
 fi
 
-# Renombrar archivo temporal a docker-compose.yml si existe
-if [ -f docker-compose.temp.yml ]; then
-  echo "Renombrando docker-compose.temp.yml a docker-compose.yml..."
-  mv -f docker-compose.temp.yml docker-compose.yml
-fi
+echo "Descargando imágenes Docker desde Docker Hub..."
 
-# Detener y eliminar contenedores anteriores (si existen)
-echo "Deteniendo contenedores existentes..."
-docker-compose down || echo "No se pudieron detener contenedores o no existían."
+docker pull davixo/backend-app:latest
+docker pull davixo/frontend-app:latest
 
-# Descargar imágenes actualizadas
-echo "Descargando imágenes actualizadas..."
-docker-compose pull
+echo "Deteniendo y eliminando contenedores antiguos (si existen)..."
 
-# Levantar servicios con construcción si es necesario
-echo "Levantando servicios..."
-docker-compose up -d --build
+docker rm -f backend frontend || true
+
+echo "Ejecutando contenedor backend en puerto 4000..."
+
+docker run -d --name backend -p 4000:4000 davixo/backend-app:latest
+
+echo "Ejecutando contenedor frontend en puerto 3000..."
+
+docker run -d --name frontend -p 3000:3000 davixo/frontend-app:latest
+
+echo "Creando configuración de Nginx para proxy inverso..."
+
+NGINX_CONF_PATH="/etc/nginx/sites-available/my_app.conf"
+
+sudo tee "$NGINX_CONF_PATH" > /dev/null <<'EOF'
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:4000/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+EOF
+
+echo "Habilitando configuración de Nginx..."
+
+sudo ln -sf "$NGINX_CONF_PATH" /etc/nginx/sites-enabled/my_app.conf
+
+echo "Probando configuración de Nginx..."
+
+sudo nginx -t
+
+echo "Recargando Nginx para aplicar cambios..."
+
+sudo systemctl reload nginx
 
 echo "Despliegue completado con éxito."
