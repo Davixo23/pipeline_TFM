@@ -153,9 +153,9 @@ pipeline {
           // Leer archivo original
           def composeContent = readFile(composeFile)
 
-          // Reemplazar imágenes con tag dinámico
-          composeContent = composeContent.replaceAll(/davixo\\/backend-app:.*$/, "davixo/backend-app:${env.TAG}")
-          composeContent = composeContent.replaceAll(/davixo\\/frontend-app:.*$/, "davixo/frontend-app:${env.TAG}")
+          // Reemplazar imágenes con tag dinámico usando regex para cualquier tag existente
+          composeContent = composeContent.replaceAll(/davixo\/backend-app:[^\s"]+/, "davixo/backend-app:${env.TAG}")
+          composeContent = composeContent.replaceAll(/davixo\/frontend-app:[^\s"]+/, "davixo/frontend-app:${env.TAG}")
 
           // Guardar archivo temporal modificado
           writeFile file: tempComposeFile, text: composeContent
@@ -164,7 +164,7 @@ pipeline {
         }
       }
     }
-    
+
     stage('Deploy to VM') {
       when {
         expression { params.ACTION == 'apply' && env.INSTANCE_PUBLIC_IP != '' }
@@ -172,7 +172,15 @@ pipeline {
       steps {
         sshagent(['oci-ssh-private-key']) {
           sh """
-            scp -o StrictHostKeyChecking=no scripts/deploy_docker.sh app/docker-compose.temp.yml ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/docker-compose.yml
+            # Copiar script y archivo docker-compose modificado a la VM
+            scp -o StrictHostKeyChecking=no scripts/deploy_docker.sh ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/
+            scp -o StrictHostKeyChecking=no app/docker-compose.temp.yml ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/
+
+            # Remover docker-compose.yml viejo y renombrar el temporal
+            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'rm -f /home/ubuntu/docker-compose.yml'
+            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'mv /home/ubuntu/docker-compose.temp.yml /home/ubuntu/docker-compose.yml'
+
+            # Dar permisos y ejecutar script de despliegue
             ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'chmod +x /home/ubuntu/deploy_docker.sh'
             ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} /home/ubuntu/deploy_docker.sh
           """
