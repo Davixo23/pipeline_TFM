@@ -172,21 +172,18 @@ pipeline {
       steps {
         sshagent(['oci-ssh-private-key']) {
           sh """
-            # Copiar script y archivo docker-compose modificado a la VM
+            echo "Copiando archivos a la VM..."
             scp -o StrictHostKeyChecking=no scripts/deploy_docker.sh ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/
             scp -o StrictHostKeyChecking=no app/docker-compose.temp.yml ubuntu@${env.INSTANCE_PUBLIC_IP}:/home/ubuntu/
 
-            # Remover docker-compose.yml viejo y renombrar el temporal
-            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'rm -f /home/ubuntu/docker-compose.yml'
-            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'mv /home/ubuntu/docker-compose.temp.yml /home/ubuntu/docker-compose.yml'
-
-            # Dar permisos y ejecutar script de despliegue
-            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'chmod +x /home/ubuntu/deploy_docker.sh'
-            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} /home/ubuntu/deploy_docker.sh
+            echo "Dando permisos y ejecutando script de despliegue..."
+            ssh -o StrictHostKeyChecking=no ubuntu@${env.INSTANCE_PUBLIC_IP} 'chmod +x /home/ubuntu/deploy_docker.sh && /home/ubuntu/deploy_docker.sh'
           """
         }
       }
     }
+
+
 
     stage('Cleanup Docker Images') {
       steps {
